@@ -1,39 +1,49 @@
-import { useState, useContext } from "react";
-import { AuthContext } from "../auth/AuthContext";
+import { useState } from "react";
+import { useAuth } from "../auth/useAuth";
+import { useNavigate, Navigate } from "react-router-dom";
+import { apiRequest } from "../api/apiClient";
 
-const LoginPage = () => {
-    const [token,setToken] = useState<string | null>()
-    const [email,setEmail] = useState('')
-    const [password, setPassword] = useState('')
-    const {login} = useContext(AuthContext)
+export default function LoginPage() {
 
-    const handleSubmit = (e:React.FormEvent<HTMLFormElement>) =>{
+    const { login, isAuthenticated } = useAuth()
+    const navigate = useNavigate()
+
+    if (isAuthenticated) return <Navigate to="/app" replace />;
+    const [error, setError] = useState("");
+
+    async function handleSubmit(e: React.FormEvent<HTMLFormElement>){
         e.preventDefault();
-        login(email,password);
+        const fd = new FormData(e.currentTarget);
+        try {
+            const {token} = await apiRequest<{token:string}>("/auth/login",{
+                method: "POST",
+                body: JSON.stringify({
+                    email: fd.get("email"),
+                    password: fd.get("password")
+                })
+            })
+            login(token);
+            navigate("/app",{replace:true})
+        } catch(err){
+            setError(err instanceof Error ? err.message : "Login failed")
+        }
     }
-   
 
+    
 
-        
       
     return (
-        <div>
-            <h1>Login</h1>
-            <p>Welcome to the login page</p>
-            <form onSubmit={handleSubmit}>
-            <input type="text" name = "email" 
-            onChange = {(e)=> setEmail(e.target.value)} 
-            ></input>
-
-            <input type="text" name = "password" 
-            onChange = {(e)=> {setPassword(e.target.value)
-            }} 
-            ></input>
-            </form>
-
-        </div>
+         <div className="login-page">
+      <form onSubmit={handleSubmit}>
+        <h1>Sign in</h1>
+        {error && <p className="error">{error}</p>}
+        <input name="email" placeholder="Email" required />
+        <input name="password" type="password" placeholder="Password" required />
+        <button type="submit">Login</button>
+      </form>
+    </div>
 
     );
 };
 
-export default LoginPage;
+
